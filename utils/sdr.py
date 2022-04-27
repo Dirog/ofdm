@@ -1,6 +1,6 @@
 import adi
 import numpy as np
-import utils.libhackrf as libhackrf
+#import utils.libhackrf as libhackrf
 
 class SDR:
     def __init__(self, sdr_name, buffer_size, fs_hz, central_freq, rx_gain_db, tx_gain_db):
