@@ -1,6 +1,6 @@
 import adi
 import numpy as np
-import utils.libhackrf as libhackrf
+#import utils.libhackrf as libhackrf
 
 class SDR:
     def __init__(self, sdr_name, buffer_size, fs_hz, central_freq, rx_gain_db, tx_gain_db):
@@ -11,41 +11,42 @@ class SDR:
         self.sdr_name = sdr_name
         self.fs_hz = fs_hz
 
-        if sdr_name == 'pluto':
+        if sdr_name == 'pluto_1':
             try:
                 pluto_ip = "ip:192.168.2.1"
                 self.sdr = adi.Pluto(pluto_ip)
             except:
-                raise Exception("Cannot init Pluto device!")
+                raise Exception("Cannot init Pluto 1 device!")
 
-            self.sdr.gain_control_mode_chan0 = 'manual'
-            self.sdr.rx_hardwaregain_chan0 = self.rx_gain_db
-            self.sdr.tx_hardwaregain_chan0 = self.tx_gain_db
-            self.sdr.rx_lo = int(self.central_freq)
-            self.sdr.tx_lo = int(self.central_freq)
-            self.sdr.sample_rate = int(self.fs_hz)
-            self.sdr.rx_rf_bandwidth = int(self.fs_hz)
-            self.sdr.tx_rf_bandwidth = int(self.fs_hz)
-            self.sdr.rx_buffer_size = buffer_size
-            self.sdr.tx_destroy_buffer()
-        elif sdr_name == 'hackrf':
+        elif sdr_name == 'pluto_2':
             try:
-                self.sdr = libhackrf.HackRF()
+                pluto_ip = "ip:192.168.2.2"
+                self.sdr = adi.Pluto(pluto_ip)
             except:
-                raise Exception("Cannot init HackRF device!")
+                raise Exception("Cannot init Pluto 2 device!")
 
-            self.sdr.sample_rate = self.fs_hz
-            self.sdr.center_freq = self.central_freq
-            #TODO create variables for gains
-            self.sdr.set_vga_gain(24)
-            self.sdr.set_lna_gain(34)
+        else:
+            raise Exception("Unknown device name!")
+
+        
+        self.sdr.gain_control_mode_chan0 = 'manual'
+        self.sdr.rx_hardwaregain_chan0 = self.rx_gain_db
+        self.sdr.tx_hardwaregain_chan0 = self.tx_gain_db
+        self.sdr.rx_lo = int(self.central_freq)
+        self.sdr.tx_lo = int(self.central_freq)
+        self.sdr.sample_rate = int(self.fs_hz)
+        self.sdr.rx_rf_bandwidth = int(self.fs_hz)
+        self.sdr.tx_rf_bandwidth = int(self.fs_hz)
+        self.sdr.rx_buffer_size = buffer_size
+        self.sdr.tx_destroy_buffer()
 
 
     def get_data(self):
-        if self.sdr_name == 'pluto':
+        if self.sdr_name == 'pluto_1' or self.sdr_name == 'pluto_2':
             return self.sdr.rx()
         elif self.sdr_name == 'hackrf':
-            return self.sdr.read_samples(self.buffer_size)
+            iq = self.sdr.read_samples(self.buffer_size)
+            return iq - np.mean(iq)
 
 
     def send_data(self, packet):
@@ -56,7 +57,7 @@ class SDR:
 
 
     def clear_rx(self):
-        if self.sdr_name == 'pluto':
+        if self.sdr_name == 'pluto_1' or self.sdr_name == 'pluto_2':
             self.sdr.rx_destroy_buffer()
         for _ in range(5):
             self.get_data()

@@ -7,9 +7,10 @@ import utils.debug as debug
 class OFDM:
     def __init__(self, fft_size : int, carriers : int, cp_size : int,
                  mod_oder : int, symbols_per_packet : int,
-                 pilot_fraction : int) -> None:
+                 pilot_fraction : int, buffer_size : int) -> None:
 
         self.symbols_per_packet = symbols_per_packet
+        self.buffer_size = buffer_size
         self.fft_size = fft_size
         self.carriers = carriers
         self.cp_size = cp_size
@@ -17,20 +18,32 @@ class OFDM:
         self.stf = self.__generate_stf()
         self.constellation = qam.constellation(mod_oder)
 
-        self.acf_threshold = 0.80
+        self.acf_threshold = 0.8
 
         self.pilot_fraction = pilot_fraction
         self.pilot_count = int(self.carriers * self.pilot_fraction)
         self.pilots, self.pilot_indexes, self.info_indexes = self.__get_pilots()
 
+        max_acf_index = self.buffer_size - self.cp_size - self.fft_size
+        symbols_len = (self.fft_size + self.cp_size) * self.symbols_per_packet
+        self.max_offset = max_acf_index - len(self.stf) - symbols_len
+
 
     def modulate(self, iq : np.array(np.complex64)) -> np.array(np.complex64):
+        pad = (self.fft_size - self.carriers) // 2
         iq = np.reshape(iq, (-1, self.carriers))
+        iq = np.pad(iq, ((0, 0), (pad, pad)))
+        iq = np.fft.fftshift(iq, axes=(1,))
+
         return np.fft.ifft(iq, self.fft_size)
 
 
     def demodulate(self, x : np.array(np.complex64)) -> np.array(np.complex64):
-        return np.fft.fft(x, self.fft_size)[:, :self.carriers]
+        iq = np.fft.fft(x, self.fft_size)
+        iq = np.fft.fftshift(iq, axes=(1,))
+
+        pad = (self.fft_size - self.carriers) // 2
+        return iq[:, pad:self.fft_size - pad]
 
 
     def insert_pilots(self, iq_info: np.array(np.complex64)) -> np.array(np.complex64):
@@ -90,13 +103,18 @@ class OFDM:
         rx_pilots = iq[:, self.pilot_indexes]
         ch_estimate = rx_pilots / self.pilots
 
-        iq_equalized = []
+        channel = []
+        iq_equalized = np.zeros(iq.shape, dtype=np.complex64)
         n = np.arange(self.carriers)
         for i in range(iq.shape[0]):
             temp = np.interp(n, self.pilot_indexes, ch_estimate[i, :])
-            iq_equalized.append(iq[i, :] / (temp + 1e-20)) 
+            iq_equalized[i, :] = (iq[i, :] / (temp + 1e-20))
+            channel.append(temp)
 
-        return np.array(iq_equalized)[:, self.info_indexes]
+        if __debug__:
+            debug.plot_channel(np.abs(np.array(channel)))
+
+        return iq_equalized[:, self.info_indexes]
 
 
     def pipeline(self, raw : np.array(np.complex64)) -> np.array(int):
@@ -138,7 +156,7 @@ class OFDM:
 
         symbols = np.ones((len(peaks), self.fft_size), dtype=np.complex64)
         if len(peaks) != self.symbols_per_packet:
-            print(len(peaks), end='\r', flush=True)
+            #print(len(peaks), end='\r', flush=True)
             return symbols
 
         STO = peaks
@@ -185,6 +203,7 @@ class OFDM:
             ,0,0]
             )
 
+        seq = np.pad(seq, (6,6))
         stf = np.fft.ifft(ampl * seq, 64)
         stf = np.tile(stf, 2)
         stf = np.concatenate((stf[-32:], stf, [stf[-32]]))

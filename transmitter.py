@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import utils.ofdm as ofdm
 from utils.sdr import SDR
@@ -14,7 +15,7 @@ class Transmitter:
 
         self.fft_size = config['ofdm_fft_size']
         self.carriers = config['ofdm_carriers']
-        self.guard_size = config['ofdm_guard_size']
+        self.cp_size = config['ofdm_guard_size']
         self.constellation = config['constellation']
         self.pilot_fraction = config['pilot_fraction']
         self.symbols_per_packet = config['symbols_per_packet']
@@ -23,13 +24,13 @@ class Transmitter:
         self.sdr = SDR(
             self.sdr_name, self.buffer_size, self.fs_hz, 
             self.fc_hz, self.rx_gain_db, self.tx_gain_db
-            )
+        )
 
 
     def transmit(self) -> None:
-        ofdm_tx = ofdm.OFDM(self.fft_size, self.carriers,
-                         self.guard_size, self.constellation,
-                         self.symbols_per_packet, self.pilot_fraction)
+        ofdm_tx = ofdm.OFDM(self.fft_size, self.carriers, self.cp_size,
+                            self.constellation, self.symbols_per_packet,
+                            self.pilot_fraction, self.buffer_size)
         X = 37
         Y = 100
         N = X*Y
@@ -44,3 +45,4 @@ class Transmitter:
         while True:
             for i in range(packets.shape[0]):
                 self.sdr.send_data(packets[i,:])
+                #time.sleep(0.2)
