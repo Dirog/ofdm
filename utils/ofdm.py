@@ -100,6 +100,7 @@ class OFDM:
 
 
     def equalize(self, iq : np.array(np.complex64)) -> np.array(np.complex64):
+        # TODO add STO, SCO, CFO sync.
         rx_pilots = iq[:, self.pilot_indexes]
         ch_estimate = rx_pilots / self.pilots
 
