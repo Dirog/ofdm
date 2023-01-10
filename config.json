@@ -2,17 +2,17 @@
     "tx_device"       : "pluto_1",
     "rx_device"       : "pluto_1",
 
-    "carrier_freq"    : 2000e6,
-    "sampling_rate"   : 1e6,
+    "carrier_freq"    : 2004e6,
+    "sampling_rate"   : 2e6,
     "rx_gain_dB"      : 10,
-    "tx_gain_dB"      : -10,
+    "tx_gain_dB"      : 0,
     "buffer_size"     : 8196,
 
     "ofdm_fft_size"   : 64,
     "ofdm_guard_size" : 16,
     "ofdm_carriers"   : 52,
     "pilot_fraction"  : 0.3,
-    "constellation"   : 4,
+    "constellation"   : 16,
 
     "symbols_per_packet" : 10
 }

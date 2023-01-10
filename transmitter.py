@@ -1,11 +1,11 @@
 import time
 import numpy as np
 import utils.ofdm as ofdm
-from utils.sdr import SDR
+#from utils.sdr import SDR
 
 
 class Transmitter:
-    def __init__(self, config):
+    def __init__(self, config, loopback=False):
 
         self.fs_hz = config['sampling_rate']
         self.fc_hz = config['carrier_freq']
@@ -20,29 +20,14 @@ class Transmitter:
         self.pilot_fraction = config['pilot_fraction']
         self.symbols_per_packet = config['symbols_per_packet']
 
-        self.sdr_name = config['tx_device']
-        self.sdr = SDR(
-            self.sdr_name, self.buffer_size, self.fs_hz, 
-            self.fc_hz, self.rx_gain_db, self.tx_gain_db
-        )
-
-
-    def transmit(self) -> None:
-        ofdm_tx = ofdm.OFDM(self.fft_size, self.carriers, self.cp_size,
+        self.__ofdm = ofdm.OFDM(self.fft_size, self.carriers, self.cp_size,
                             self.constellation, self.symbols_per_packet,
-                            self.pilot_fraction, self.buffer_size)
-        X = 37
-        Y = 100
-        N = X*Y
+                            self.pilot_fraction, self.buffer_size
+                            )
 
-        np.random.seed(0)
-        tx_data = np.random.choice(self.constellation, (N,)).astype(int)
-        packets = ofdm_tx.get_ofdm_packets(tx_data)
-        print(packets.shape)
-        print(tx_data)
 
-        print('Transmitting!')
-        while True:
-            for i in range(packets.shape[0]):
-                self.sdr.send_data(packets[i,:])
-                #time.sleep(0.2)
+
+
+    def get_ofdm_packets(self, symbols):
+        return self.__ofdm.get_ofdm_packets(symbols)
+        

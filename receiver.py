@@ -1,10 +1,10 @@
 import numpy as np
 import utils.ofdm as ofdm
-from utils.sdr import SDR
+#from utils.sdr import SDR
 
 
 class Receiver:
-    def __init__(self, config):
+    def __init__(self, config, loopback=False):
 
         self.fs_hz = config['sampling_rate']
         self.fc_hz = config['carrier_freq']
@@ -19,48 +19,23 @@ class Receiver:
         self.pilot_fraction = config['pilot_fraction']
         self.symbols_per_packet = config['symbols_per_packet']
 
-        self.sdr_name = config['rx_device']
-        self.sdr = SDR(
-            self.sdr_name, self.buffer_size, self.fs_hz, 
-            self.fc_hz, self.rx_gain_db, self.tx_gain_db
-        )
-
-
-    def receive(self):
-        ofdm_rx = ofdm.OFDM(self.fft_size, self.carriers, self.cp_size,
+        self.__ofdm = ofdm.OFDM(self.fft_size, self.carriers, self.cp_size,
                             self.constellation, self.symbols_per_packet,
-                            self.pilot_fraction, self.buffer_size)
-
-        X = 37
-        Y = 100
-        N = X*Y
-        np.random.seed(0)
-        true_data = np.random.choice(self.constellation, (N,)).astype(int)
-        true_data = np.reshape(true_data, (-1,370))
-        print(true_data.flatten())
-
-        for _ in range(10):
-            self.sdr.get_data()
-
-        n = 0
-        sers = []
-        while True:
-            raw = self.sdr.get_data()
-            status, offset = ofdm_rx.detect(raw)
-            if status and offset < ofdm_rx.max_offset:
-                stop = (self.cp_size+self.fft_size)*(self.symbols_per_packet+1)
-                raw = raw[offset:offset + stop]
-                packet = ofdm_rx.pipeline(raw)
+                            self.pilot_fraction, self.buffer_size
+                            )
 
 
-                # TODO Добавить рассчет BER
-                if n > 10:
-                    mean = np.mean(sers)
-                    print("SER={:e}".format(mean), end='\r', flush=True)
-                    n = 0; sers = []
+    def evaluate(self, buffer):
+        status, offset = self.__ofdm.detect(buffer)
+        if status and offset < self.__ofdm.max_offset:
+            stop = (self.cp_size+self.fft_size)*(self.symbols_per_packet+1)
+            buffer = buffer[offset:offset + stop]
+            packet = self.__ofdm.pipeline(buffer)
 
-                for i in range(true_data.shape[0]):
-                    ser = 1 - np.mean(packet == true_data[i,:])
-                    if ser < 0.5:
-                        sers.append(ser); n += 1
+            return packet
+        else:
+            return None
+        
+
+        
 

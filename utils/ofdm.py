@@ -24,6 +24,8 @@ class OFDM:
         self.pilot_count = int(self.carriers * self.pilot_fraction)
         self.pilots, self.pilot_indexes, self.info_indexes = self.__get_pilots()
 
+        self.info_ncarriers = self.carriers - self.pilot_count
+
         max_acf_index = self.buffer_size - self.cp_size - self.fft_size
         symbols_len = (self.fft_size + self.cp_size) * self.symbols_per_packet
         self.max_offset = max_acf_index - len(self.stf) - symbols_len
@@ -71,25 +73,34 @@ class OFDM:
 
 
     def acf(self, x : np.array(np.complex64), width : int, step : int) -> np.array(np.complex64):
-        x += 1e-30 + 1j * 1e-30
-        acf = np.zeros((len(x) - width - step,), dtype=complex)
+        acf = np.zeros((len(x) - width - step,), dtype=np.complex64)
         for i in range(len(acf)):
             lhs = x[i:i+width]
             rhs = x[i+step:i+step+width]
             norm = np.sqrt(np.vdot(lhs,lhs) * np.vdot(rhs,rhs))
-            acf[i] = np.vdot(lhs, rhs) / norm
+            if norm == 0:
+                acf[i] = 0.0
+            else:
+                acf[i] = np.vdot(lhs, rhs) / norm
 
         return acf
 
 
     def get_ofdm_packets(self, symbols : np.array(int)) -> np.array(np.complex64):
+        iq_pad = len(symbols) // self.info_ncarriers + 1
         iq = qam.modulate(symbols, self.constellation)
-        iq = np.reshape(iq, (-1, self.carriers - self.pilot_count))
+        iq = np.resize(iq, iq_pad * self.info_ncarriers)
+        iq = np.reshape(iq, (iq_pad, self.info_ncarriers))
         iq = self.insert_pilots(iq)
 
         signal = self.modulate(iq)
         signal = self.insert_cyclic_prefix(signal)
-        packets = np.reshape(signal, (-1, (self.fft_size+self.cp_size) * self.symbols_per_packet))
+
+        packet_len = (self.fft_size+self.cp_size) * self.symbols_per_packet
+        npackets = signal.size // packet_len + 1
+        pad = self.symbols_per_packet * npackets - signal.shape[0]
+        signal = np.pad(signal, [(0,pad), (0, 0)])
+        packets = np.reshape(signal, (npackets, packet_len))
         prefixes = np.tile(self.stf, (packets.shape[0], 1))
         packets = np.concatenate((prefixes, packets), axis=1)
 
@@ -155,10 +166,7 @@ class OFDM:
         if __debug__:
             debug.plot_acf(corr_abs, peaks)
 
-        symbols = np.ones((len(peaks), self.fft_size), dtype=np.complex64)
-        if len(peaks) != self.symbols_per_packet:
-            #print(len(peaks), end='\r', flush=True)
-            return symbols
+        symbols = np.zeros((len(peaks), self.fft_size), dtype=np.complex64)
 
         STO = peaks
         CFO = 1 / (2*np.pi) * np.angle(corr[peaks])

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def plot_acf_and_psd(raw, acf):
     plt.figure(1)
-    plt.subplot(3,2,1)
+    #plt.subplot(3,2,1)
     plt.cla()
     plt.plot(np.abs(acf))
     plt.title('Packet ACF')
@@ -12,7 +12,8 @@ def plot_acf_and_psd(raw, acf):
     plt.ylim([0,1.1])
     plt.grid()
 
-    plt.subplot(3,2,2)
+    plt.figure(2)
+    #plt.subplot(3,2,2)
     plt.cla()
     plt.psd(raw, NFFT=256)
     plt.tight_layout()
@@ -21,8 +22,8 @@ def plot_acf_and_psd(raw, acf):
 
 
 def plot_constellation(iq):
-    plt.figure(1)
-    plt.subplot(3,2,4)
+    plt.figure(3)
+    #plt.subplot(3,2,4)
     plt.cla()
     plt.scatter(np.real(iq), np.imag(iq), alpha=0.5)
     plt.title('Signal constellation')
@@ -35,8 +36,8 @@ def plot_constellation(iq):
 
 
 def plot_acf(acf, peaks):
-    plt.figure(1)
-    plt.subplot(3,2,3)
+    plt.figure(4)
+    #plt.subplot(3,2,3)
     plt.cla()
     plt.plot(np.abs(acf))
     plt.plot(peaks, np.abs(acf[peaks]), marker='x')
@@ -51,8 +52,8 @@ def plot_acf(acf, peaks):
 def plot_channel(channel):
     #channel = np.mean(channel, axis=1) / (np.max(channel, axis=1) + 1e-20)
     channel = channel[0,:] / (np.max(channel[0,:]) + 1e-20)
-    plt.figure(1)
-    plt.subplot(3,1,3)
+    plt.figure(5)
+    #plt.subplot(3,1,3)
     plt.cla()
     plt.plot(20*np.log10(channel + 1e-20))
     plt.title('Channel response')
